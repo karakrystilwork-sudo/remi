@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chat with Remi | The Official WFH Club</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<main class="gate" id="gate" hidden>
+  <form class="card gate-card" id="gateForm">
+    <div class="avatar big">R</div>
+    <h1>Welcome to Remi</h1>
+    <p>Enter the access code from The Official WFH Club to start your free trial.</p>
+    <input id="codeInput" placeholder="Access code" autocomplete="off">
+    <p class="error" id="gateError"></p>
+    <button class="btn" type="submit">Start chatting</button>
+    <a href="/" class="muted">Back to home</a>
+  </form>
+</main>
+
+<main class="chat" id="chat" hidden>
+  <header class="chat-head">
+    <a href="/" class="brand"><span class="avatar">R</span><span><b>Remi</b><small>The Official WFH Club</small></span></a>
+    <button class="btn ghost" id="newChat" type="button">New chat</button>
+  </header>
+  <div class="log" id="log"></div>
+  <form class="composer" id="composer">
+    <button type="button" class="btn ghost attach" id="attach" title="Attach a .txt resume">+</button>
+    <input type="file" id="file" accept=".txt,.md" hidden>
+    <textarea id="input" rows="2" placeholder="Message Remi… (paste your resume or a job post anytime)"></textarea>
+    <button class="btn" id="send">Send</button>
+  </form>
+  <p class="disclaimer">Remi is AI and can make mistakes. Never share passwords, SSNs, or bank details.</p>
+</main>
+
+<script>
+const GREETING = "Hi! I'm Remi, your AI career assistant from The Official WFH Club! I'm here to make your remote job search a little easier, whether you're starting fresh, returning to work, or looking for your next opportunity. I can help with resumes, job matching, LinkedIn, interview prep, and more. What would you like to work on today?";
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } },
+  set(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} },
+};
+let code = store.get("remi-code");
+let history = []; // sent to the AI (greeting excluded)
+let busy = false;
+
+function show() {
+  $("gate").hidden = !!code;
+  $("chat").hidden = !code;
+  if (code) $("input").focus(); else $("codeInput").focus();
+}
+function bubble(cls, text) {
+  const d = document.createElement("div");
+  d.className = "msg " + cls;
+  d.textContent = text;
+  $("log").appendChild(d);
+  $("log").scrollTop = $("log").scrollHeight;
+  return d;
+}
+function note(text) {
+  const d = document.createElement("div");
+  d.className = "error center";
+  d.textContent = text;
+  $("log").appendChild(d);
+  $("log").scrollTop = $("log").scrollHeight;
+}
+function reset() {
+  if (busy) return;
+  history = [];
+  $("log").innerHTML = "";
+  bubble("remi", GREETING);
+}
+
+$("gateForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const c = $("codeInput").value.trim();
+  if (!c) return;
+  code = c; store.set("remi-code", c); $("gateError").textContent = ""; show();
+});
+$("newChat").onclick = reset;
+$("attach").onclick = () => $("file").click();
+$("file").onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  if (!/\.(txt|md)$/i.test(f.name)) { note("For now, upload a .txt file or paste your resume text into the box."); return; }
+  const t = await f.text();
+  $("input").value = ($("input").value ? $("input").value + "\n\n" : "") + "Here's my resume:\n\n" + t;
+};
+$("input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("composer").requestSubmit(); }
+});
+
+$("composer").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const q = $("input").value.trim();
+  if (!q || busy) return;
+  busy = true; $("send").disabled = true; $("input").value = "";
+  bubble("user", q);
+  history.push({ role: "user", content: q });
+  const out = bubble("remi", "…");
+  let text = "";
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-access-code": code },
+      body: JSON.stringify({ messages: history }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        code = ""; store.set("remi-code", "");
+        $("gateError").textContent = "That access code didn't work.";
+        history.pop(); out.remove(); show(); return;
+      }
+      throw new Error(data.error || "Something went wrong. Try again.");
+    }
+    // Read the AI's streamed reply (server-sent events).
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        const data = line.slice(5).trim();
+        if (!data || data === "[DONE]") continue;
+        try {
+          const piece = JSON.parse(data).choices?.[0]?.delta?.content;
+          if (piece) { text += piece; out.textContent = text; $("log").scrollTop = $("log").scrollHeight; }
+        } catch {}
+      }
+    }
+    if (!text) throw new Error("Remi didn't answer. Try again.");
+    history.push({ role: "assistant", content: text });
+  } catch (err) {
+    out.remove(); history.pop();
+    $("input").value = q;
+    note(err.message);
+  } finally {
+    busy = false; $("send").disabled = false; $("input").focus();
+  }
+});
+
+reset();
+show();
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "remi",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./public", "binding": "ASSETS", "html_handling": "auto-trailing-slash" },
+  "vars": { "GROQ_MODEL": "openai/gpt-oss-120b" }
+  // Secrets (set in the Cloudflare dashboard, not here): GROQ_API_KEY, ACCESS_CODES
+}

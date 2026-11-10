@@ -1,20 +1,26 @@
 # Remi
 
-The Official WFH Club's AI career assistant. Free trial version: access-code login, no database.
+The Official WFH Club's AI career assistant. Free trial version, $0 to run:
 
-## Deploy on Vercel
+- **Hosting:** Cloudflare Workers (free plan)
+- **AI:** Groq (free plan), model `openai/gpt-oss-120b`
+- **Access:** testers enter an access code; no accounts yet
 
-1. Go to vercel.com, sign up with GitHub, click **Add New → Project**, and import `remi`.
-2. Under **Environment Variables**, add:
-   - `ANTHROPIC_API_KEY`: your key from console.anthropic.com
-   - `ACCESS_CODES`: codes testers can use, separated by commas (for example `WFHTRIAL,MOMSWORK`)
-   - `ANTHROPIC_MODEL` (optional): defaults to `claude-sonnet-5-5`
-3. Click **Deploy**.
+## Files
 
-## Control costs
+- `public/` website pages (landing page, chat)
+- `src/worker.js` chat server; talks to Groq and keeps the AI key secret
+- `src/remi-prompt.js` Remi's instructions (edit here)
+- `wrangler.jsonc` Cloudflare settings
 
-In console.anthropic.com, set a monthly spend limit. To cut off a tester, remove their code from `ACCESS_CODES` and redeploy.
+## Secrets (set in Cloudflare → your Worker → Settings → Variables and Secrets)
 
-## Edit Remi's instructions
+- `GROQ_API_KEY`: from console.groq.com → API Keys
+- `ACCESS_CODES`: codes testers can use, separated by commas (for example `WFHTRIAL,MOMSWORK`)
 
-`lib/remi-prompt.js`
+## Free limits to know
+
+Groq's free plan is shared across all users: roughly 30 requests/minute, 1,000 requests/day,
+8,000 tokens/minute, 200,000 tokens/day on gpt-oss-120b. Remi's instructions are sent with every
+message, so expect roughly 35 to 40 replies per day total. When the limit is hit, Remi shows a
+"try again later" message; nothing is charged.
