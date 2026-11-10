@@ -32,7 +32,7 @@ async function chat(request, env) {
     headers: { "content-type": "application/json", authorization: "Bearer " + env.GROQ_API_KEY },
     body: JSON.stringify({
       model: env.GROQ_MODEL || "openai/gpt-oss-120b",
-      messages: [{ role: "system", content: REMI_PROMPT }, ...messages],
+      messages: [{ role: "system", content: REMI_PROMPT + "\n\nThe site already showed your greeting. Do not greet or introduce yourself again; answer the member directly." }, ...messages],
       max_completion_tokens: 1500,
       reasoning_effort: "low",
       stream: true,

@@ -132,7 +132,7 @@ $("composer").addEventListener("submit", async (e) => {
         if (!data || data === "[DONE]") continue;
         try {
           const piece = JSON.parse(data).choices?.[0]?.delta?.content;
-          if (piece) { text += piece; out.textContent = text; $("log").scrollTop = $("log").scrollHeight; }
+          if (piece) { text += piece.replace(/\s*[\u2014\u2013]\s*/g, ", "); out.textContent = text; $("log").scrollTop = $("log").scrollHeight; }
         } catch {}
       }
     }
