@@ -44,7 +44,10 @@ async function chat(request, env) {
     console.log("Groq error", upstream.status, detail.slice(0, 500));
     const error = upstream.status === 429
       ? "Remi has hit today's free limit or is busy. Try again in a minute, or tomorrow."
-      : "Remi couldn't answer. Try again.";
+      : `Remi couldn't answer (error ${upstream.status}). Try again.`;
+    let reason = "";
+    try { reason = JSON.parse(detail).error?.message || ""; } catch {}
+    if (upstream.status !== 429) return json({ error, reason: reason.slice(0, 200) }, 502);
     return json({ error }, 502);
   }
 
