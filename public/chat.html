@@ -73,10 +73,18 @@ function reset() {
   bubble("remi", GREETING);
 }
 
-$("gateForm").addEventListener("submit", (e) => {
+async function codeOk(c) {
+  try {
+    const r = await fetch("/api/check", { method: "POST", headers: { "x-access-code": c } });
+    return r.ok;
+  } catch { return false; }
+}
+$("gateForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const c = $("codeInput").value.trim();
   if (!c) return;
+  $("gateError").textContent = "Checking…";
+  if (!(await codeOk(c))) { $("gateError").textContent = "That access code didn't work."; return; }
   code = c; store.set("remi-code", c); $("gateError").textContent = ""; show();
 });
 $("newChat").onclick = reset;
@@ -148,6 +156,7 @@ $("composer").addEventListener("submit", async (e) => {
 });
 
 reset();
+if (code) codeOk(code).then((ok) => { if (!ok) { code = ""; store.set("remi-code", ""); show(); } });
 show();
 </script>
 </body>

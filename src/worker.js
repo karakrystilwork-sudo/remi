@@ -60,6 +60,10 @@ async function chat(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/api/check") {
+      if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
+      return validCode(env, request.headers.get("x-access-code")) ? json({ ok: true }) : json({ error: "Invalid access code." }, 401);
+    }
     if (url.pathname === "/api/chat") {
       if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
       return chat(request, env);
